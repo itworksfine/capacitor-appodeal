@@ -9,7 +9,7 @@ The API mirrors Appodeal's official React Native plugin, [`react-native-appodeal
 ## Requirements
 
 - Capacitor 8
-- iOS 15+ (Swift Package Manager or CocoaPods)
+- iOS 15+ (Swift Package Manager or CocoaPods), built with Xcode 26 or later: Appodeal's frameworks do not link with older toolchains
 - Android API 24+
 - An Appodeal account and app key
 
