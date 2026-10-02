@@ -64,6 +64,11 @@ class AppodealPlugin : Plugin() {
             Appodeal.setBannerCallbacks(BannerEvents(emit))
             Appodeal.setAdRevenueCallbacks(RevenueEvents(emit))
             Appodeal.setUseSafeArea(true)
+            // Deprecated, but react-native-appodeal still sets it, and without it
+            // a banner can be re-added to a view it is already attached to when
+            // the app returns from a full-screen ad (react-native-appodeal#105).
+            @Suppress("DEPRECATION")
+            Appodeal.setSharedAdsInstanceAcrossActivities(true)
             Appodeal.initialize(activity ?: context, appKey, types) { emit("onAppodealInitialized", null) }
             call.resolve()
         }

@@ -98,6 +98,32 @@ The SDK lays banners over the web view, inside the safe area. The page has to ke
 
 Everything else (`AppodealAdType` flags, the consent and purchase enums, event names and their payloads, rejection codes) matches.
 
+## Known issues
+
+Reported against `react-native-appodeal`, reviewed for whether they reach this plugin. Most come from the native SDK or from a mediated network, so they can affect any wrapper.
+
+**Handled in this plugin**
+
+- **Crash on Android when returning from a full-screen ad to a screen with a banner** ([#105](https://github.com/appodeal/react-native-appodeal/issues/105)): "The specified child already has a parent". The plugin keeps `setSharedAdsInstanceAcrossActivities(true)`, as `react-native-appodeal` does.
+- **Crash on Android at startup with a null context** ([#118](https://github.com/appodeal/react-native-appodeal/issues/118)): `initialize` falls back to the application context when there is no activity yet.
+- **iOS banners drawn off-centre** ([#153](https://github.com/appodeal/react-native-appodeal/issues/153), [#186](https://github.com/appodeal/react-native-appodeal/issues/186)): caused by the React Native banner component's own layout code, which this plugin does not have. Banners here are placed by the SDK; still check them on a real device.
+
+**Flagged: depend on what you add to the app**
+
+- **Android crash at launch: "The Google Mobile Ads SDK was initialized incorrectly"** ([#154](https://github.com/appodeal/react-native-appodeal/issues/154)). The plugin pulls in no Google Mobile Ads library, but the AdMob adapter, and other adapters that bundle Google's SDK, do. With any of them in the app, set the AdMob app ID in `AndroidManifest.xml` (`com.google.android.gms.ads.APPLICATION_ID`) and in `Info.plist` (`GADApplicationIdentifier`), even if you do not mediate AdMob.
+- **Android crash: "Using WebView from more than one process at once with the same data directory"** ([#104](https://github.com/appodeal/react-native-appodeal/issues/104)). Some network SDKs run a second process. The plugin's own dependencies start none, but if an adapter you add does, don't touch `WebView` from your `Application` class in that process (for example, a `WebView.setWebContentsDebuggingEnabled` call), or give each process its own data directory with `WebView.setDataDirectorySuffix`.
+
+**Flagged: in the native SDK, nothing a wrapper can fix**
+
+- **iOS `EXC_BAD_ACCESS` in `SKAdNetwork startImpression`** ([#161](https://github.com/appodeal/react-native-appodeal/issues/161), [#162](https://github.com/appodeal/react-native-appodeal/issues/162)): reported on SDK 3.10 after interstitials, linked to the BidMachine adapter. Unconfirmed on 4.x. Watch crash reports after release, and check with Appodeal support if it shows up.
+- **Ads load in test mode but not in production** ([#164](https://github.com/appodeal/react-native-appodeal/issues/164)): usually set-up rather than code. Before release, check that the app is linked to its store listing in the dashboard, that `app-ads.txt` is published, and that test mode is off.
+- **Dashboard says "CMP not integrated yet" though consent works** ([#159](https://github.com/appodeal/react-native-appodeal/issues/159)): reporting on Appodeal's side; consent still reaches the SDK.
+- **Server-to-server reward callbacks not arriving on iOS** ([#136](https://github.com/appodeal/react-native-appodeal/issues/136)): unresolved upstream. Don't rely on them for anything critical without testing on iOS.
+
+**Build**
+
+- Android dependencies come from Appodeal's Artifactory, which has been slow or briefly unavailable ([#135](https://github.com/appodeal/react-native-appodeal/issues/135), [#101](https://github.com/appodeal/react-native-appodeal/issues/101)). Cache Gradle in CI.
+
 ## API
 
 <docgen-index>
