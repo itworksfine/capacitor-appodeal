@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Appodeal example</title>
+    <meta
+      name="viewport"
+      content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: env(safe-area-inset-top) 16px calc(var(--banner-height, 0px) + env(safe-area-inset-bottom) + 16px);
+      }
+      fieldset { margin: 16px 0; border: 1px solid #ccc; border-radius: 8px; }
+      input { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+      button { margin: 4px 4px 4px 0; }
+      #log { font: 12px ui-monospace, monospace; white-space: pre-wrap; background: #f4f4f4; padding: 8px; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Appodeal</h1>
+    <p>Fill in your app key from the Appodeal dashboard. It is remembered on this device. Test mode is on.</p>
+
+    <fieldset>
+      <legend>SDK</legend>
+      <input id="appKey" placeholder="App key" />
+      <button data-action="consent">Consent</button>
+      <button data-action="initialize">Initialize</button>
+      <button data-action="privacy">Privacy settings</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Ads</legend>
+      <button data-action="interstitial">Show interstitial</button>
+      <button data-action="rewarded">Show rewarded video</button>
+      <button data-action="bannerBottom">Show bottom banner</button>
+      <button data-action="hideBanner">Hide banner</button>
+      <button data-action="status">Loaded?</button>
+    </fieldset>
+
+    <div id="log"></div>
+
+    <script src="./js/example.js" type="module"></script>
+  </body>
+</html>
