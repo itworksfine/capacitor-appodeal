@@ -1,5 +1,8 @@
 # @itworksfine/capacitor-appodeal
 
+[![npm](https://img.shields.io/npm/v/@itworksfine/capacitor-appodeal)](https://www.npmjs.com/package/@itworksfine/capacitor-appodeal)
+[![license](https://img.shields.io/npm/l/@itworksfine/capacitor-appodeal)](LICENSE)
+
 Capacitor plugin for [Appodeal](https://appodeal.com): interstitial, rewarded video and banner ads, with Appodeal mediation, on Android and iOS.
 
 The API mirrors Appodeal's official React Native plugin, [`react-native-appodeal`](https://github.com/appodeal/react-native-appodeal), so Appodeal's documentation and examples carry over. See [Differences from react-native-appodeal](#differences-from-react-native-appodeal).
