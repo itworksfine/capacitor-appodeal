@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "ItworksCapacitorAppodeal",
+    name: "ItworksfineCapacitorAppodeal",
     platforms: [.iOS(.v15)],
     products: [
         .library(
-            name: "ItworksCapacitorAppodeal",
+            name: "ItworksfineCapacitorAppodeal",
             targets: ["AppodealPlugin"])
     ],
     dependencies: [

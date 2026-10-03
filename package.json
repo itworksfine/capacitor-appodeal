@@ -1,5 +1,5 @@
 {
-  "name": "@itworks/capacitor-appodeal",
+  "name": "@itworksfine/capacitor-appodeal",
   "version": "0.1.0",
   "description": "Capacitor plugin for Appodeal: interstitial, rewarded video and banner ads with Appodeal mediation on Android and iOS",
   "main": "dist/plugin.cjs.js",
@@ -13,17 +13,17 @@
     "ios/Sources",
     "ios/Tests",
     "Package.swift",
-    "ItworksCapacitorAppodeal.podspec"
+    "ItworksfineCapacitorAppodeal.podspec"
   ],
-  "homepage": "https://github.com/jongbonga/capacitor-appodeal#readme",
+  "homepage": "https://github.com/itworksfine/capacitor-appodeal#readme",
   "author": "Jonathan Ngbonga <jongbonga@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jongbonga/capacitor-appodeal.git"
+    "url": "git+https://github.com/itworksfine/capacitor-appodeal.git"
   },
   "bugs": {
-    "url": "https://github.com/jongbonga/capacitor-appodeal/issues"
+    "url": "https://github.com/itworksfine/capacitor-appodeal/issues"
   },
   "keywords": [
     "capacitor",

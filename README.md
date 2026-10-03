@@ -1,4 +1,4 @@
-# @itworks/capacitor-appodeal
+# @itworksfine/capacitor-appodeal
 
 Capacitor plugin for [Appodeal](https://appodeal.com): interstitial, rewarded video and banner ads, with Appodeal mediation, on Android and iOS.
 
@@ -16,7 +16,7 @@ The API mirrors Appodeal's official React Native plugin, [`react-native-appodeal
 ## Install
 
 ```bash
-npm install @itworks/capacitor-appodeal
+npm install @itworksfine/capacitor-appodeal
 npx cap sync
 ```
 
@@ -51,7 +51,7 @@ Also publish an [`app-ads.txt`](https://docs.appodeal.com/advanced/app-ads-txt) 
 ## Usage
 
 ```ts
-import { Appodeal, AppodealAdType, AppodealConsentStatus } from '@itworks/capacitor-appodeal';
+import { Appodeal, AppodealAdType, AppodealConsentStatus } from '@itworksfine/capacitor-appodeal';
 
 const APP_KEY = 'YOUR_APP_KEY';
 const AD_TYPES = AppodealAdType.INTERSTITIAL | AppodealAdType.REWARDED_VIDEO | AppodealAdType.BANNER;
