@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/itworksfine/capacitor-appodeal/compare/v0.1.1...v0.1.2) (2026-10-03)
+
+
+### Bug Fixes
+
+* **release:** run npm ci before upgrading npm ([#3](https://github.com/itworksfine/capacitor-appodeal/issues/3)) ([fc9489e](https://github.com/itworksfine/capacitor-appodeal/commit/fc9489e51009920b366feb8c776a8ff4249d4104))
+
 ## [0.1.1](https://github.com/itworksfine/capacitor-appodeal/compare/v0.1.0...v0.1.1) (2026-10-03)
 
 
