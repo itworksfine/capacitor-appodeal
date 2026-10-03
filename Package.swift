@@ -23,7 +23,10 @@ let package = Package(
                 .product(name: "AppodealSDK", package: "Appodeal-Swift-Package"),
                 .product(name: "AppodealIABAdapter", package: "Appodeal-Swift-Package-IAB")
             ],
-            path: "ios/Sources/AppodealPlugin"),
+            path: "ios/Sources/AppodealPlugin",
+            // Appodeal's static frameworks add methods through Objective-C categories,
+            // which the linker drops without -ObjC.
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-ObjC"])]),
         .testTarget(
             name: "AppodealPluginTests",
             dependencies: [

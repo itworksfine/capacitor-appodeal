@@ -35,6 +35,8 @@ Add these to `ios/App/App/Info.plist`:
 - `NSUserTrackingUsageDescription`, the text of the App Tracking Transparency prompt.
 - `SKAdNetworkItems`, Appodeal's list of SKAdNetwork IDs for the networks you use. Get it from the [Appodeal iOS docs](https://docs.appodeal.com/ios/get-started).
 
+In Xcode, add `-ObjC` to **Other Linker Flags** on the App target. Appodeal adds methods through Objective-C categories that the linker otherwise strips, and `initialize` then crashes with `unrecognized selector … buildEnvironmentStore:`. CocoaPods sets this for you; with Swift Package Manager the plugin passes it from `node_modules`, but set it on the target anyway in case the package is resolved another way.
+
 ### Android
 
 The plugin adds Appodeal's Maven repository itself. If your app declares repositories in `settings.gradle` with `RepositoriesMode.FAIL_ON_PROJECT_REPOS`, add `maven { url 'https://artifactory.appodeal.com/appodeal' }` there too.
