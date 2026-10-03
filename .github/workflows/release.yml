@@ -25,10 +25,10 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+      - if: ${{ steps.release.outputs.release_created }}
+        run: npm ci
       # Trusted publishing (OIDC, no token) needs npm 11.5+.
       - if: ${{ steps.release.outputs.release_created }}
         run: npm install -g npm@latest
-      - if: ${{ steps.release.outputs.release_created }}
-        run: npm ci
       - if: ${{ steps.release.outputs.release_created }}
         run: npm publish --access public --provenance
