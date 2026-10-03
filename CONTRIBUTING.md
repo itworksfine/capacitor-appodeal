@@ -43,10 +43,13 @@ This template is integrated with ESLint, Prettier, and SwiftLint. Using these to
 
 ## Publishing
 
-There is a `prepublishOnly` hook in `package.json` which prepares the plugin before publishing, so all you need to do is run:
+Releases are automated with [release-please](https://github.com/googleapis/release-please). Commits on `main` follow [Conventional Commits](https://www.conventionalcommits.org/) (PRs are squash-merged, so the PR title is the commit):
 
-```shell
-npm publish
-```
+- `fix:` releases a patch
+- `feat:` releases a minor
+- `feat!:` or a `BREAKING CHANGE:` footer releases a major (a minor before 1.0)
+- `chore:`, `docs:`, `ci:`, `refactor:`, `test:` don't release
+
+release-please keeps a release PR open with the version bump and `CHANGELOG.md`. Merging it tags `vX.Y.Z`, creates the GitHub Release and publishes to npm with provenance.
 
 > **Note**: The [`files`](https://docs.npmjs.com/cli/v7/configuring-npm/package-json#files) array in `package.json` specifies which files get published. If you rename files/directories or add files elsewhere, you may need to update it.

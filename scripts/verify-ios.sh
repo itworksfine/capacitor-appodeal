@@ -3,7 +3,7 @@
 # iPhone simulator, whichever Xcode is selected.
 set -euo pipefail
 
-scheme=JongbongaCapacitorAppodeal
+scheme=ItworksCapacitorAppodeal
 
 xcodebuild build -scheme "$scheme" -destination generic/platform=iOS
 

@@ -6,7 +6,7 @@ import {
   AppodealLogLevel,
   AppodealRewardedEvents,
   AppodealSdkEvents,
-} from '@jongbonga/capacitor-appodeal';
+} from '@itworks/capacitor-appodeal';
 
 const appKeyInput = document.getElementById('appKey');
 appKeyInput.value = localStorage.getItem('appKey') ?? '';

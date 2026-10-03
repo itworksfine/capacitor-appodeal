@@ -1,5 +1,5 @@
 {
-  "name": "@jongbonga/capacitor-appodeal",
+  "name": "@itworks/capacitor-appodeal",
   "version": "0.1.0",
   "description": "Capacitor plugin for Appodeal: interstitial, rewarded video and banner ads with Appodeal mediation on Android and iOS",
   "main": "dist/plugin.cjs.js",
@@ -13,7 +13,7 @@
     "ios/Sources",
     "ios/Tests",
     "Package.swift",
-    "JongbongaCapacitorAppodeal.podspec"
+    "ItworksCapacitorAppodeal.podspec"
   ],
   "homepage": "https://github.com/jongbonga/capacitor-appodeal#readme",
   "author": "Jonathan Ngbonga <jongbonga@gmail.com>",

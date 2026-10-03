@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@capacitor/core": "latest",
-    "@jongbonga/capacitor-appodeal": "file:..",
+    "@itworks/capacitor-appodeal": "file:..",
     "@capacitor/ios": "^8.0.0",
     "@capacitor/android": "^8.0.0"
   },
