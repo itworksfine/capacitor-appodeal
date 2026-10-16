@@ -4,4 +4,4 @@
  * copies are in `Version.kt` and `Version.swift`, and `npm run verify:version`
  * fails when any of the four differ.
  */
-export const PLUGIN_VERSION = '0.1.2'; // x-release-please-version
+export const PLUGIN_VERSION = '0.1.3'; // x-release-please-version
