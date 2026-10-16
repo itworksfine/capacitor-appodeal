@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/itworksfine/capacitor-appodeal/compare/v0.1.2...v0.1.3) (2026-10-16)
+
+
+### Bug Fixes
+
+* make banners, versions and events behave the same on iOS and Android ([#5](https://github.com/itworksfine/capacitor-appodeal/issues/5)) ([9a543aa](https://github.com/itworksfine/capacitor-appodeal/commit/9a543aae5b3f08ff74e506011a88effda764ef36))
+
 ## [0.1.2](https://github.com/itworksfine/capacitor-appodeal/compare/v0.1.1...v0.1.2) (2026-10-03)
 
 
