@@ -89,7 +89,17 @@ await Appodeal.hide({ adTypes: AppodealAdType.BANNER });
 
 ### Banners and the web view
 
-The SDK lays banners over the web view, inside the safe area. The page has to keep its own content clear of them: `onBannerLoaded` reports the banner's `height`, so reserve `calc(var(--banner-height) + env(safe-area-inset-bottom))` for a bottom banner while it is shown.
+The SDK lays banners over the web view, inside the safe area. The page has to keep its own content clear of them: `onBannerLoaded` reports the banner's `height`, so reserve `calc(var(--banner-height) + env(safe-area-inset-bottom))` for a bottom banner while it is shown. The last `onBannerLoaded` is kept until the page adds a listener, so a banner that loads before the page is ready is not missed.
+
+There is one banner, so `isLoaded` and `hide` answer and act the same for `BANNER`, `BANNER_BOTTOM` and `BANNER_TOP`; `show` with plain `BANNER` shows it at the bottom. On Android a banner that fails to show fires `onBannerFailedToShow`; the iOS SDK does not report that case.
+
+### Waiting for the SDK
+
+`initialize` resolves as soon as the call is made, as in `react-native-appodeal`. To wait until the SDK is ready instead, pass `waitForInitialization: true`; the call then resolves on `onAppodealInitialized` and rejects with `INITIALIZATION_TIMEOUT` after `initializationTimeoutMs` (30 seconds by default).
+
+```ts
+await Appodeal.initialize({ appKey: APP_KEY, adTypes: AD_TYPES, waitForInitialization: true });
+```
 
 ## Differences from react-native-appodeal
 
@@ -100,6 +110,11 @@ The SDK lays banners over the web view, inside the safe area. The page has to ke
 | `Appodeal.addEventListener(event, handler)` | `Appodeal.addListener(event, handler)` | Capacitor's listener API; the event names are the same |
 | `<AppodealBanner>`, `<AppodealMrec>` components | not available | Use `show({ adTypes: BANNER_BOTTOM })` for banners. MRECs are not supported yet |
 | `getVersion()` | resolves this plugin's version | |
+| `initialize` | takes `waitForInitialization` and `initializationTimeoutMs` | Optional; see [Waiting for the SDK](#waiting-for-the-sdk) |
+| `onAppodealInitialized` has no payload | carries `{ errors }` | Android's per-network initialization errors; empty on iOS |
+| `onRewardedVideoFailedToShow` has no payload | carries `{ message }` on iOS | The iOS SDK gives the reason; Android's does not |
+| `onBannerFailedToShow` is dropped | fires on Android | The iOS SDK has no such callback |
+| Consent calls on web | resolve as not required | `react-native-appodeal` has no web target; here a consent-first start-up runs through in the browser |
 
 Everything else (`AppodealAdType` flags, the consent and purchase enums, event names and their payloads, rejection codes) matches.
 
@@ -170,7 +185,9 @@ Reported against `react-native-appodeal`, reviewed for whether they reach this p
 * [`trackEvent(...)`](#trackevent)
 * [`setBidonEndpoint(...)`](#setbidonendpoint)
 * [`getBidonEndpoint()`](#getbidonendpoint)
-* [`addListener('onAppodealInitialized' | 'onBannerFailedToLoad' | 'onBannerExpired' | 'onBannerShown' | 'onBannerClicked' | 'onInterstitialFailedToLoad' | 'onInterstitialExpired' | 'onInterstitialShown' | 'onInterstitialFailedToShow' | 'onInterstitialClicked' | 'onInterstitialClosed' | 'onRewardedVideoFailedToLoad' | 'onRewardedVideoExpired' | 'onRewardedVideoShown' | 'onRewardedVideoFailedToShow' | 'onRewardedVideoClicked', ...)`](#addlisteneronappodealinitialized--onbannerfailedtoload--onbannerexpired--onbannershown--onbannerclicked--oninterstitialfailedtoload--oninterstitialexpired--oninterstitialshown--oninterstitialfailedtoshow--oninterstitialclicked--oninterstitialclosed--onrewardedvideofailedtoload--onrewardedvideoexpired--onrewardedvideoshown--onrewardedvideofailedtoshow--onrewardedvideoclicked-)
+* [`addListener('onAppodealInitialized' | 'onBannerFailedToLoad' | 'onBannerExpired' | 'onBannerShown' | 'onBannerClicked' | 'onInterstitialFailedToLoad' | 'onInterstitialExpired' | 'onInterstitialShown' | 'onInterstitialFailedToShow' | 'onInterstitialClicked' | 'onInterstitialClosed' | 'onRewardedVideoFailedToLoad' | 'onRewardedVideoExpired' | 'onRewardedVideoShown' | 'onRewardedVideoClicked', ...)`](#addlisteneronappodealinitialized--onbannerfailedtoload--onbannerexpired--onbannershown--onbannerclicked--oninterstitialfailedtoload--oninterstitialexpired--oninterstitialshown--oninterstitialfailedtoshow--oninterstitialclicked--oninterstitialclosed--onrewardedvideofailedtoload--onrewardedvideoexpired--onrewardedvideoshown--onrewardedvideoclicked-)
+* [`addListener('onAppodealInitialized', ...)`](#addlisteneronappodealinitialized-)
+* [`addListener('onBannerFailedToShow' | 'onRewardedVideoFailedToShow', ...)`](#addlisteneronbannerfailedtoshow--onrewardedvideofailedtoshow-)
 * [`addListener('onInterstitialLoaded' | 'onRewardedVideoLoaded', ...)`](#addlisteneroninterstitialloaded--onrewardedvideoloaded-)
 * [`addListener('onBannerLoaded', ...)`](#addlisteneronbannerloaded-)
 * [`addListener('onRewardedVideoClosed', ...)`](#addlisteneronrewardedvideoclosed-)
@@ -196,17 +213,21 @@ resolve with it here.
 ### initialize(...)
 
 ```typescript
-initialize(options: { appKey: string; adTypes: AppodealAdType; }) => Promise<void>
+initialize(options: { appKey: string; adTypes: AppodealAdType; waitForInitialization?: boolean; initializationTimeoutMs?: number; }) => Promise<void>
 ```
 
-Initializes the SDK for the given ad types. Resolves once the call is
-made; the `onAppodealInitialized` event fires when the SDK is ready.
+Initializes the SDK for the given ad types. By default it resolves once
+the call is made, and the `onAppodealInitialized` event fires when the
+SDK is ready. With `waitForInitialization` it resolves when the SDK is
+ready instead, and rejects with `INITIALIZATION_TIMEOUT` if that takes
+longer than `initializationTimeoutMs` (30 seconds by default); the SDK
+carries on initializing in the background either way.
 
 Set testing, logging, consent and other options before calling this.
 
-| Param         | Type                                                                                    |
-| ------------- | --------------------------------------------------------------------------------------- |
-| **`options`** | <code>{ appKey: string; adTypes: <a href="#appodealadtype">AppodealAdType</a>; }</code> |
+| Param         | Type                                                                                                                                                       |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`options`** | <code>{ appKey: string; adTypes: <a href="#appodealadtype">AppodealAdType</a>; waitForInitialization?: boolean; initializationTimeoutMs?: number; }</code> |
 
 **Since:** 0.1.0
 
@@ -239,8 +260,8 @@ show(options: { adTypes: AppodealAdType; placement?: string; }) => Promise<void>
 ```
 
 Shows an ad. Use `BANNER_BOTTOM` or `BANNER_TOP` for banners, which the
-SDK lays over the web view. Resolves once the request is made; watch the
-ad type's events for the outcome.
+SDK lays over the web view; plain `BANNER` shows at the bottom. Resolves
+once the request is made; watch the ad type's events for the outcome.
 
 | Param         | Type                                                                                        |
 | ------------- | ------------------------------------------------------------------------------------------- |
@@ -257,7 +278,9 @@ ad type's events for the outcome.
 isLoaded(options: { adTypes: AppodealAdType; }) => Promise<{ isLoaded: boolean; }>
 ```
 
-Whether an ad of the given type is loaded.
+Whether an ad of the given type is loaded. For banners, `BANNER`,
+`BANNER_BOTTOM` and `BANNER_TOP` all answer for the one banner the SDK
+loads.
 
 | Param         | Type                                                                    |
 | ------------- | ----------------------------------------------------------------------- |
@@ -297,7 +320,8 @@ account.
 hide(options: { adTypes: AppodealAdType; }) => Promise<void>
 ```
 
-Hides the banner.
+Hides the banner. Any of `BANNER`, `BANNER_BOTTOM` and `BANNER_TOP`
+hides it, on both platforms.
 
 | Param         | Type                                                                    |
 | ------------- | ----------------------------------------------------------------------- |
@@ -823,18 +847,63 @@ getBidonEndpoint() => Promise<{ endpoint: string | null; }>
 --------------------
 
 
-### addListener('onAppodealInitialized' | 'onBannerFailedToLoad' | 'onBannerExpired' | 'onBannerShown' | 'onBannerClicked' | 'onInterstitialFailedToLoad' | 'onInterstitialExpired' | 'onInterstitialShown' | 'onInterstitialFailedToShow' | 'onInterstitialClicked' | 'onInterstitialClosed' | 'onRewardedVideoFailedToLoad' | 'onRewardedVideoExpired' | 'onRewardedVideoShown' | 'onRewardedVideoFailedToShow' | 'onRewardedVideoClicked', ...)
+### addListener('onAppodealInitialized' | 'onBannerFailedToLoad' | 'onBannerExpired' | 'onBannerShown' | 'onBannerClicked' | 'onInterstitialFailedToLoad' | 'onInterstitialExpired' | 'onInterstitialShown' | 'onInterstitialFailedToShow' | 'onInterstitialClicked' | 'onInterstitialClosed' | 'onRewardedVideoFailedToLoad' | 'onRewardedVideoExpired' | 'onRewardedVideoShown' | 'onRewardedVideoClicked', ...)
 
 ```typescript
-addListener(eventName: 'onAppodealInitialized' | 'onBannerFailedToLoad' | 'onBannerExpired' | 'onBannerShown' | 'onBannerClicked' | 'onInterstitialFailedToLoad' | 'onInterstitialExpired' | 'onInterstitialShown' | 'onInterstitialFailedToShow' | 'onInterstitialClicked' | 'onInterstitialClosed' | 'onRewardedVideoFailedToLoad' | 'onRewardedVideoExpired' | 'onRewardedVideoShown' | 'onRewardedVideoFailedToShow' | 'onRewardedVideoClicked', listenerFunc: () => void) => Promise<PluginListenerHandle>
+addListener(eventName: 'onAppodealInitialized' | 'onBannerFailedToLoad' | 'onBannerExpired' | 'onBannerShown' | 'onBannerClicked' | 'onInterstitialFailedToLoad' | 'onInterstitialExpired' | 'onInterstitialShown' | 'onInterstitialFailedToShow' | 'onInterstitialClicked' | 'onInterstitialClosed' | 'onRewardedVideoFailedToLoad' | 'onRewardedVideoExpired' | 'onRewardedVideoShown' | 'onRewardedVideoClicked', listenerFunc: () => void) => Promise<PluginListenerHandle>
 ```
 
 Events with no data.
 
-| Param              | Type                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`eventName`**    | <code>'onAppodealInitialized' \| 'onBannerFailedToLoad' \| 'onBannerExpired' \| 'onBannerShown' \| 'onBannerClicked' \| 'onInterstitialFailedToLoad' \| 'onInterstitialExpired' \| 'onInterstitialShown' \| 'onInterstitialFailedToShow' \| 'onInterstitialClicked' \| 'onInterstitialClosed' \| 'onRewardedVideoFailedToLoad' \| 'onRewardedVideoExpired' \| 'onRewardedVideoShown' \| 'onRewardedVideoFailedToShow' \| 'onRewardedVideoClicked'</code> |
-| **`listenerFunc`** | <code>() =&gt; void</code>                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Param              | Type                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'onAppodealInitialized' \| 'onBannerFailedToLoad' \| 'onBannerExpired' \| 'onBannerShown' \| 'onBannerClicked' \| 'onInterstitialFailedToLoad' \| 'onInterstitialExpired' \| 'onInterstitialShown' \| 'onInterstitialFailedToShow' \| 'onInterstitialClicked' \| 'onInterstitialClosed' \| 'onRewardedVideoFailedToLoad' \| 'onRewardedVideoExpired' \| 'onRewardedVideoShown' \| 'onRewardedVideoClicked'</code> |
+| **`listenerFunc`** | <code>() =&gt; void</code>                                                                                                                                                                                                                                                                                                                                                                                              |
+
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
+
+**Since:** 0.1.0
+
+--------------------
+
+
+### addListener('onAppodealInitialized', ...)
+
+```typescript
+addListener(eventName: 'onAppodealInitialized', listenerFunc: (event: AppodealInitializedEvent) => void) => Promise<PluginListenerHandle>
+```
+
+Fires when the SDK has initialized. `errors` lists what went wrong with
+mediated networks, if anything did; the SDK still serves ads from the
+rest. The event is kept until the first listener is added, so it is not
+missed if the SDK is quicker than the page.
+
+| Param              | Type                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'onAppodealInitialized'</code>                                                              |
+| **`listenerFunc`** | <code>(event: <a href="#appodealinitializedevent">AppodealInitializedEvent</a>) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
+
+**Since:** 0.1.0
+
+--------------------
+
+
+### addListener('onBannerFailedToShow' | 'onRewardedVideoFailedToShow', ...)
+
+```typescript
+addListener(eventName: 'onBannerFailedToShow' | 'onRewardedVideoFailedToShow', listenerFunc: (event: AppodealFailedToShowEvent) => void) => Promise<PluginListenerHandle>
+```
+
+Fires when an ad that was asked to show did not. `message` says why
+when the SDK gives a reason (iOS rewarded videos); `onBannerFailedToShow`
+fires on Android only, as the iOS SDK does not report it.
+
+| Param              | Type                                                                                                |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'onBannerFailedToShow' \| 'onRewardedVideoFailedToShow'</code>                                |
+| **`listenerFunc`** | <code>(event: <a href="#appodealfailedtoshowevent">AppodealFailedToShowEvent</a>) =&gt; void</code> |
 
 **Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
@@ -868,7 +937,9 @@ addListener(eventName: 'onBannerLoaded', listenerFunc: (event: AppodealBannerLoa
 ```
 
 Fires when a banner loads. `height` is the banner's height, which the
-page should keep clear while the banner is shown.
+page should keep clear while the banner is shown. The last one is kept
+until a listener is added, so a page that attaches after the banner has
+loaded still hears about it.
 
 | Param              | Type                                                                                                |
 | ------------------ | --------------------------------------------------------------------------------------------------- |
@@ -1020,6 +1091,20 @@ SDK returns Apple's validation response as is.
 | Prop         | Type                                      |
 | ------------ | ----------------------------------------- |
 | **`remove`** | <code>() =&gt; Promise&lt;void&gt;</code> |
+
+
+#### AppodealInitializedEvent
+
+| Prop         | Type                  | Description                                                                                                                        | Since |
+| ------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| **`errors`** | <code>string[]</code> | Messages for the mediated networks that failed to initialize, if any. Reported on Android; iOS gives none and sends an empty list. | 0.2.0 |
+
+
+#### AppodealFailedToShowEvent
+
+| Prop          | Type                | Description                          | Since |
+| ------------- | ------------------- | ------------------------------------ | ----- |
+| **`message`** | <code>string</code> | The SDK's reason, when it gives one. | 0.2.0 |
 
 
 #### AppodealLoadedEvent

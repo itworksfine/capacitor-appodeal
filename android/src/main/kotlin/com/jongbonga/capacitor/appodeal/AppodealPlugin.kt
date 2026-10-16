@@ -8,6 +8,7 @@ import com.appodeal.ads.inapp.InAppPurchase
 import com.appodeal.ads.inapp.InAppPurchaseValidateCallback
 import com.appodeal.ads.service.ServiceError
 import com.appodeal.consent.ConsentManager
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -25,8 +26,9 @@ class AppodealPlugin : Plugin() {
     private val main = Handler(Looper.getMainLooper())
 
     private val emit: Emit = { name, data ->
-        // Initialization can finish before the page has added its listener.
-        notifyListeners(name, data ?: JSObject(), name == "onAppodealInitialized")
+        // Initialization, and the first banner, can finish before the page has
+        // added its listener; those events are kept until it does.
+        notifyListeners(name, data ?: JSObject(), name in RETAINED_EVENTS)
     }
 
     /** Runs `body` on the main thread, where the SDK expects its calls. */
@@ -57,8 +59,20 @@ class AppodealPlugin : Plugin() {
             return
         }
         val types = adTypes(call)
+        val wait = call.getBoolean("waitForInitialization", false) ?: false
+        val timeoutMs = (call.getInt("initializationTimeoutMs") ?: DEFAULT_INITIALIZATION_TIMEOUT_MS).toLong()
         onMain {
-            Appodeal.setFramework("capacitor", VERSION)
+            // With `waitForInitialization` the call is settled once, by whichever
+            // comes first: the SDK's callback or the timeout.
+            var settled = !wait
+            val timeout = Runnable {
+                if (!settled) {
+                    settled = true
+                    call.reject("Appodeal did not initialize within ${timeoutMs}ms", ERROR_INITIALIZATION_TIMEOUT)
+                }
+            }
+
+            Appodeal.setFramework("capacitor", PLUGIN_VERSION)
             Appodeal.setInterstitialCallbacks(InterstitialEvents(emit))
             Appodeal.setRewardedVideoCallbacks(RewardedVideoEvents(emit))
             Appodeal.setBannerCallbacks(BannerEvents(emit))
@@ -69,8 +83,22 @@ class AppodealPlugin : Plugin() {
             // the app returns from a full-screen ad (react-native-appodeal#105).
             @Suppress("DEPRECATION")
             Appodeal.setSharedAdsInstanceAcrossActivities(true)
-            Appodeal.initialize(activity ?: context, appKey, types) { emit("onAppodealInitialized", null) }
-            call.resolve()
+            // The SDK takes any context; the application's is the fallback for a
+            // call made before the activity exists (react-native-appodeal#118).
+            Appodeal.initialize(activity ?: context, appKey, types) { errors ->
+                val messages = errors.orEmpty().map { it.message ?: it.toString() }
+                emit("onAppodealInitialized", JSObject().put("errors", JSArray(messages)))
+                if (!settled) {
+                    settled = true
+                    main.removeCallbacks(timeout)
+                    call.resolve()
+                }
+            }
+            if (wait) {
+                main.postDelayed(timeout, timeoutMs)
+            } else {
+                call.resolve()
+            }
         }
     }
 
@@ -83,7 +111,7 @@ class AppodealPlugin : Plugin() {
 
     @PluginMethod
     fun show(call: PluginCall) {
-        val types = adTypes(call)
+        val types = Conversions.toShowTypes(call.getInt("adTypes") ?: 0)
         withActivity(call) {
             Appodeal.show(it, types, placement(call))
             call.resolve()
@@ -102,7 +130,7 @@ class AppodealPlugin : Plugin() {
 
     @PluginMethod
     fun hide(call: PluginCall) {
-        val types = adTypes(call)
+        val types = Conversions.toHideTypes(call.getInt("adTypes") ?: 0)
         withActivity(call) {
             Appodeal.hide(it, types)
             call.resolve()
@@ -233,7 +261,7 @@ class AppodealPlugin : Plugin() {
 
     @PluginMethod
     fun getVersion(call: PluginCall) {
-        call.resolve(JSObject().put("version", VERSION))
+        call.resolve(JSObject().put("version", PLUGIN_VERSION))
     }
 
     @PluginMethod
@@ -395,8 +423,10 @@ class AppodealPlugin : Plugin() {
     }
 
     companion object {
-        const val VERSION = "0.1.0"
+        private const val DEFAULT_INITIALIZATION_TIMEOUT_MS = 30_000
         private const val ERROR_ACTIVITY = "ACTIVITY_ERROR"
         private const val ERROR_ARGUMENT = "INVALID_ARGUMENT"
+        private const val ERROR_INITIALIZATION_TIMEOUT = "INITIALIZATION_TIMEOUT"
+        private val RETAINED_EVENTS = setOf("onAppodealInitialized", "onBannerLoaded")
     }
 }

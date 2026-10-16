@@ -24,7 +24,29 @@ internal object Conversions {
     /** `AppodealAdType.ALL` on the JavaScript side. */
     const val ALL = INTERSTITIAL or BANNER or BANNER_BOTTOM or BANNER_TOP or REWARDED_VIDEO or MREC
 
+    private const val ANY_BANNER = BANNER or BANNER_BOTTOM or BANNER_TOP
+
     private fun Int.has(flag: Int) = (this and flag) != 0
+
+    /**
+     * The SDK types for `show`. A plain `BANNER` names no position, so it
+     * shows at the bottom, as on iOS.
+     */
+    fun toShowTypes(types: Int): Int {
+        val positioned = if (types.has(BANNER) && !types.has(BANNER_BOTTOM or BANNER_TOP)) {
+            (types and BANNER.inv()) or BANNER_BOTTOM
+        } else {
+            types
+        }
+        return toAppodealTypes(positioned)
+    }
+
+    /**
+     * The SDK types for `hide`. There is one banner, so any banner flag hides
+     * it, whichever position it was shown at.
+     */
+    fun toHideTypes(types: Int): Int =
+        toAppodealTypes(if (types.has(ANY_BANNER)) types or ANY_BANNER else types)
 
     fun toAppodealTypes(types: Int): Int {
         var result = 0

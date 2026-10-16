@@ -37,11 +37,14 @@ enum Conversions {
     }
 
     /// The single style `show` and `isLoaded` take, picked in the same order
-    /// as react-native-appodeal.
+    /// as react-native-appodeal. A plain `banner` names no position, so it is
+    /// the bottom, as on Android; for `isLoaded` the position makes no
+    /// difference, there being one banner.
     static func showStyle(_ types: Int) -> AppodealShowStyle? {
         if types & interstitial != 0 { return .interstitial }
         if types & bannerBottom != 0 { return .bannerBottom }
         if types & bannerTop != 0 { return .bannerTop }
+        if types & banner != 0 { return .bannerBottom }
         if types & rewardedVideo != 0 { return .rewardedVideo }
         return nil
     }
