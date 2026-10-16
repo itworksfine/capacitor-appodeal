@@ -10,14 +10,35 @@ import type { PluginListenerHandle } from '@capacitor/core';
  */
 export interface AppodealPlugin {
   /**
-   * Initializes the SDK for the given ad types. Resolves once the call is
-   * made; the `onAppodealInitialized` event fires when the SDK is ready.
+   * Initializes the SDK for the given ad types. By default it resolves once
+   * the call is made, and the `onAppodealInitialized` event fires when the
+   * SDK is ready. With `waitForInitialization` it resolves when the SDK is
+   * ready instead, and rejects with `INITIALIZATION_TIMEOUT` if that takes
+   * longer than `initializationTimeoutMs` (30 seconds by default); the SDK
+   * carries on initializing in the background either way.
    *
    * Set testing, logging, consent and other options before calling this.
    *
    * @since 0.1.0
    */
-  initialize(options: { appKey: string; adTypes: AppodealAdType }): Promise<void>;
+  initialize(options: {
+    appKey: string;
+    adTypes: AppodealAdType;
+    /**
+     * Resolve when the SDK reports it is initialized, not when the call is
+     * made.
+     *
+     * @since 0.2.0
+     */
+    waitForInitialization?: boolean;
+    /**
+     * How long to wait with `waitForInitialization` before rejecting.
+     *
+     * @default 30000
+     * @since 0.2.0
+     */
+    initializationTimeoutMs?: number;
+  }): Promise<void>;
 
   /**
    * Whether the SDK has been initialized for the given ad types.
@@ -28,15 +49,17 @@ export interface AppodealPlugin {
 
   /**
    * Shows an ad. Use `BANNER_BOTTOM` or `BANNER_TOP` for banners, which the
-   * SDK lays over the web view. Resolves once the request is made; watch the
-   * ad type's events for the outcome.
+   * SDK lays over the web view; plain `BANNER` shows at the bottom. Resolves
+   * once the request is made; watch the ad type's events for the outcome.
    *
    * @since 0.1.0
    */
   show(options: { adTypes: AppodealAdType; placement?: string }): Promise<void>;
 
   /**
-   * Whether an ad of the given type is loaded.
+   * Whether an ad of the given type is loaded. For banners, `BANNER`,
+   * `BANNER_BOTTOM` and `BANNER_TOP` all answer for the one banner the SDK
+   * loads.
    *
    * @since 0.1.0
    */
@@ -52,7 +75,8 @@ export interface AppodealPlugin {
   canShow(options: { adTypes: AppodealAdType; placement?: string }): Promise<{ canShow: boolean }>;
 
   /**
-   * Hides the banner.
+   * Hides the banner. Any of `BANNER`, `BANNER_BOTTOM` and `BANNER_TOP`
+   * hides it, on both platforms.
    *
    * @since 0.1.0
    */
@@ -306,9 +330,33 @@ export interface AppodealPlugin {
       | 'onRewardedVideoFailedToLoad'
       | 'onRewardedVideoExpired'
       | 'onRewardedVideoShown'
-      | 'onRewardedVideoFailedToShow'
       | 'onRewardedVideoClicked',
     listenerFunc: () => void,
+  ): Promise<PluginListenerHandle>;
+
+  /**
+   * Fires when the SDK has initialized. `errors` lists what went wrong with
+   * mediated networks, if anything did; the SDK still serves ads from the
+   * rest. The event is kept until the first listener is added, so it is not
+   * missed if the SDK is quicker than the page.
+   *
+   * @since 0.1.0
+   */
+  addListener(
+    eventName: 'onAppodealInitialized',
+    listenerFunc: (event: AppodealInitializedEvent) => void,
+  ): Promise<PluginListenerHandle>;
+
+  /**
+   * Fires when an ad that was asked to show did not. `message` says why
+   * when the SDK gives a reason (iOS rewarded videos); `onBannerFailedToShow`
+   * fires on Android only, as the iOS SDK does not report it.
+   *
+   * @since 0.1.0
+   */
+  addListener(
+    eventName: 'onBannerFailedToShow' | 'onRewardedVideoFailedToShow',
+    listenerFunc: (event: AppodealFailedToShowEvent) => void,
   ): Promise<PluginListenerHandle>;
 
   /**
@@ -321,7 +369,9 @@ export interface AppodealPlugin {
 
   /**
    * Fires when a banner loads. `height` is the banner's height, which the
-   * page should keep clear while the banner is shown.
+   * page should keep clear while the banner is shown. The last one is kept
+   * until a listener is added, so a page that attaches after the banner has
+   * loaded still hears about it.
    *
    * @since 0.1.0
    */
@@ -470,6 +520,25 @@ export interface AppodealAdRevenue {
    * @since 0.1.0
    */
   adType: AppodealAdType;
+}
+
+export interface AppodealInitializedEvent {
+  /**
+   * Messages for the mediated networks that failed to initialize, if any.
+   * Reported on Android; iOS gives none and sends an empty list.
+   *
+   * @since 0.2.0
+   */
+  errors: string[];
+}
+
+export interface AppodealFailedToShowEvent {
+  /**
+   * The SDK's reason, when it gives one.
+   *
+   * @since 0.2.0
+   */
+  message?: string;
 }
 
 export interface AppodealLoadedEvent {
@@ -674,6 +743,8 @@ export const AppodealBannerEvents = {
   FAILED_TO_LOAD: 'onBannerFailedToLoad',
   EXPIRED: 'onBannerExpired',
   SHOWN: 'onBannerShown',
+  /** Android only. */
+  FAILED_TO_SHOW: 'onBannerFailedToShow',
   CLICKED: 'onBannerClicked',
 } as const;
 

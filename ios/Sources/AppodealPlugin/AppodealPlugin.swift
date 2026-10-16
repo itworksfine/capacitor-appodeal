@@ -8,8 +8,6 @@ import StackConsentManager
 /// through the call's options and go back through `resolve`.
 @objc(AppodealPlugin)
 public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
-    static let version = "0.1.0"
-
     public let identifier = "AppodealPlugin"
     public let jsName = "Appodeal"
     public let pluginMethods: [CAPPluginMethod] = [
@@ -24,6 +22,15 @@ public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
 
     /// Remembered for the consent request, which needs it as the SDK does.
     private var childDirected = false
+
+    /// Remembered for the banner height, which the SDK does not always have
+    /// at the moment it reports a load.
+    private var tabletBanners = false
+
+    /// An `initialize` call waiting on the SDK, with its timeout.
+    private var pendingInitialization: (call: CAPPluginCall, timeout: DispatchWorkItem)?
+
+    private static let defaultInitializationTimeoutMs = 30_000
 
     private var rootViewController: UIViewController? {
         return bridge?.viewController
@@ -63,15 +70,35 @@ public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func initialize(_ call: CAPPluginCall) {
         guard let appKey = requireString(call, "appKey") else { return }
         let types = Conversions.adType(adTypes(call))
+        let wait = call.getBool("waitForInitialization") ?? false
+        let timeoutMs = call.getInt("initializationTimeoutMs") ?? AppodealPlugin.defaultInitializationTimeoutMs
         onMain {
-            Appodeal.setFramework(.cordova, version: "capacitor-\(AppodealPlugin.version)")
+            Appodeal.setFramework(.cordova, version: "capacitor-\(pluginVersion)")
             Appodeal.setInterstitialDelegate(self)
             Appodeal.setRewardedVideoDelegate(self)
             Appodeal.setBannerDelegate(self)
             Appodeal.setInitializationDelegate(self)
             Appodeal.setAdRevenueDelegate(self)
+            if wait, Appodeal.isInitialized(for: types) {
+                call.resolve()
+                return
+            }
             Appodeal.initialize(withApiKey: appKey, types: types)
-            call.resolve()
+            guard wait else {
+                call.resolve()
+                return
+            }
+            // Settled once, by whichever comes first: the SDK's delegate or the
+            // timeout. A second call while one waits replaces it.
+            self.pendingInitialization?.timeout.cancel()
+            self.pendingInitialization?.call.reject("Superseded by a later initialize call", "INITIALIZATION_SUPERSEDED")
+            let timeout = DispatchWorkItem { [weak self] in
+                guard let pending = self?.pendingInitialization, pending.call === call else { return }
+                self?.pendingInitialization = nil
+                call.reject("Appodeal did not initialize within \(timeoutMs)ms", "INITIALIZATION_TIMEOUT")
+            }
+            self.pendingInitialization = (call, timeout)
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(timeoutMs), execute: timeout)
         }
     }
 
@@ -84,7 +111,7 @@ public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func show(_ call: CAPPluginCall) {
         guard let style = Conversions.showStyle(adTypes(call)) else {
-            call.reject("adTypes must include an interstitial, rewarded video or banner position", "INVALID_ARGUMENT")
+            call.reject("adTypes must include an interstitial, rewarded video or banner", "INVALID_ARGUMENT")
             return
         }
         let placement = self.placement(call)
@@ -108,8 +135,13 @@ public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func hide(_ call: CAPPluginCall) {
+        // The SDK can hide only the banner; any banner flag hides it, as on
+        // Android, and other types are a no-op rather than an error.
+        let hidesBanner = Conversions.adType(adTypes(call)).contains(.banner)
         onMain {
-            Appodeal.hideBanner()
+            if hidesBanner {
+                Appodeal.hideBanner()
+            }
             call.resolve()
         }
     }
@@ -139,8 +171,10 @@ public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
     // Banner settings
 
     @objc func setTabletBanners(_ call: CAPPluginCall) {
-        let size = call.getBool("value") ?? false ? kAppodealUnitSize_728x90 : kAppodealUnitSize_320x50
+        let tablet = call.getBool("value") ?? false
+        let size = tablet ? kAppodealUnitSize_728x90 : kAppodealUnitSize_320x50
         onMain {
+            self.tabletBanners = tablet
             Appodeal.setPreferredBannerAdSize(size)
             call.resolve()
         }
@@ -313,7 +347,7 @@ public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getVersion(_ call: CAPPluginCall) {
-        call.resolve(["version": AppodealPlugin.version])
+        call.resolve(["version": pluginVersion])
     }
 
     @objc func getPlatformSdkVersion(_ call: CAPPluginCall) {
@@ -354,7 +388,8 @@ public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
             let reward = Appodeal.reward(forPlacement: placement)
             call.resolve([
                 "name": reward.currencyName ?? "",
-                "amount": String(format: "%f", reward.amount)
+                // The same text Android's `Double.toString()` gives, e.g. "1.0".
+                "amount": String(Double(reward.amount))
             ])
         }
     }
@@ -423,9 +458,12 @@ public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // Events
 
+    private static let retainedEvents: Set<String> = ["onAppodealInitialized", "onBannerLoaded"]
+
     func emit(_ name: String, _ data: [String: Any] = [:]) {
-        // Initialization can finish before the page has added its listener.
-        notifyListeners(name, data: data, retainUntilConsumed: name == "onAppodealInitialized")
+        // Initialization, and the first banner, can finish before the page has
+        // added its listener; those events are kept until it does.
+        notifyListeners(name, data: data, retainUntilConsumed: AppodealPlugin.retainedEvents.contains(name))
     }
 }
 
@@ -436,7 +474,14 @@ public class AppodealPlugin: CAPPlugin, CAPBridgedPlugin {
 extension AppodealPlugin: AppodealInitializationDelegate {
     @objc(appodealSDKDidInitialize)
     public func appodealSDKDidInitialize() {
-        emit("onAppodealInitialized")
+        // The iOS SDK reports no per-network errors; the list is there so the
+        // payload matches Android's.
+        emit("onAppodealInitialized", ["errors": [String]()])
+        if let pending = pendingInitialization {
+            pendingInitialization = nil
+            pending.timeout.cancel()
+            pending.call.resolve()
+        }
     }
 }
 
@@ -459,9 +504,14 @@ extension AppodealPlugin: AppodealAdRevenueDelegate {
 extension AppodealPlugin: AppodealBannerDelegate {
     @objc(bannerDidLoadAdIsPrecache:)
     public func bannerDidLoadAdIsPrecache(_ precache: Bool) {
+        // The banner view may not be laid out yet when the load is reported,
+        // in which case its frame is empty; the size that was asked for is
+        // what it will take.
+        let measured = Appodeal.banner()?.frame.height ?? 0
+        let height = measured > 0 ? measured : (tabletBanners ? 90 : 50)
         emit("onBannerLoaded", [
             "isPrecache": precache,
-            "height": Appodeal.banner()?.frame.height ?? 0
+            "height": height
         ])
     }
 
@@ -536,7 +586,7 @@ extension AppodealPlugin: AppodealRewardedVideoDelegate {
 
     @objc(rewardedVideoDidFailToPresentWithError:)
     public func rewardedVideoDidFailToPresentWithError(_ error: Error) {
-        emit("onRewardedVideoFailedToShow")
+        emit("onRewardedVideoFailedToShow", ["message": error.localizedDescription])
     }
 
     @objc(rewardedVideoDidExpired)
@@ -561,6 +611,7 @@ extension AppodealPlugin: AppodealRewardedVideoDelegate {
 
     @objc(rewardedVideoDidFinish:name:)
     public func rewardedVideoDidFinish(_ rewardAmount: Float, name rewardName: String?) {
-        emit("onRewardedVideoFinished", ["amount": rewardAmount, "currency": rewardName ?? ""])
+        // A Double, as on Android, so 0.1 does not arrive as 0.10000000149.
+        emit("onRewardedVideoFinished", ["amount": Double(rewardAmount), "currency": rewardName ?? ""])
     }
 }

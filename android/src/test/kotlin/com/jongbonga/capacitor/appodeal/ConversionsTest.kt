@@ -23,6 +23,25 @@ class ConversionsTest {
     }
 
     @Test
+    fun showsAPlainBannerAtTheBottom() {
+        val interstitial = 1 shl 0
+        val banner = 1 shl 2
+        val bannerTop = 1 shl 4
+        assertEquals(Appodeal.BANNER_BOTTOM, Conversions.toShowTypes(banner))
+        assertEquals(Appodeal.BANNER or Appodeal.BANNER_TOP, Conversions.toShowTypes(banner or bannerTop))
+        assertEquals(Appodeal.INTERSTITIAL, Conversions.toShowTypes(interstitial))
+    }
+
+    @Test
+    fun hidesTheBannerForAnyBannerFlag() {
+        val allBanners = Appodeal.BANNER or Appodeal.BANNER_BOTTOM or Appodeal.BANNER_TOP
+        for (flag in listOf(1 shl 2, 1 shl 3, 1 shl 4)) {
+            assertEquals(allBanners, Conversions.toHideTypes(flag))
+        }
+        assertEquals(Appodeal.MREC, Conversions.toHideTypes(1 shl 8))
+    }
+
+    @Test
     fun mapsLogLevelsAndPurchaseTypes() {
         assertEquals(Log.LogLevel.debug, Conversions.logLevel("DEBUG"))
         assertEquals(Log.LogLevel.verbose, Conversions.logLevel("verbose"))

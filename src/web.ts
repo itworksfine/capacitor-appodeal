@@ -2,11 +2,13 @@ import { WebPlugin } from '@capacitor/core';
 
 import { AppodealConsentStatus, AppodealPrivacyOptionsStatus } from './definitions';
 import type { AppodealPlugin, AppodealPurchaseValidationResult, AppodealReward } from './definitions';
+import { PLUGIN_VERSION } from './version';
 
 /**
  * Appodeal has no web SDK. Settings are accepted and ignored, lookups answer
- * as if nothing were loaded, and calls that would show an ad or a form
- * reject, so an app in the browser takes the same path as one with no fill.
+ * as if nothing were loaded, consent reads as not required, and calls that
+ * would start the SDK or show an ad reject, so an app in the browser takes
+ * the same path as one with no fill.
  */
 export class AppodealWeb extends WebPlugin implements AppodealPlugin {
   private unsupported(): never {
@@ -73,24 +75,29 @@ export class AppodealWeb extends WebPlugin implements AppodealPlugin {
     return;
   }
 
+  // There is no consent manager on web, so consent reads as not required and
+  // the forms are no-ops: a start-up sequence that asks for consent before
+  // initializing runs through in the browser instead of failing at its first
+  // step.
+
   async requestConsentInfoUpdate(): Promise<{ status: AppodealConsentStatus }> {
-    this.unsupported();
+    return { status: AppodealConsentStatus.NOT_REQUIRED };
   }
 
   async showConsentFormIfNeeded(): Promise<{ status: AppodealConsentStatus }> {
-    this.unsupported();
+    return { status: AppodealConsentStatus.NOT_REQUIRED };
   }
 
   async showConsentForm(): Promise<{ status: AppodealConsentStatus }> {
-    this.unsupported();
+    return { status: AppodealConsentStatus.NOT_REQUIRED };
   }
 
   async privacyOptionsRequirementStatus(): Promise<{ status: AppodealPrivacyOptionsStatus }> {
-    return { status: AppodealPrivacyOptionsStatus.UNKNOWN };
+    return { status: AppodealPrivacyOptionsStatus.NOT_REQUIRED };
   }
 
   async showPrivacyOptionsForm(): Promise<void> {
-    this.unsupported();
+    return;
   }
 
   async setNonPersonalized(): Promise<void> {
@@ -161,6 +168,3 @@ export class AppodealWeb extends WebPlugin implements AppodealPlugin {
     return { endpoint: null };
   }
 }
-
-/** Kept in step with `version` in package.json and the native plugins. */
-const PLUGIN_VERSION = '0.1.0';

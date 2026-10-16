@@ -13,6 +13,8 @@ class AppodealTests: XCTestCase {
 
     func testPicksTheShowStyle() {
         XCTAssertEqual(Conversions.showStyle(Conversions.bannerTop), .bannerTop)
+        XCTAssertEqual(Conversions.showStyle(Conversions.banner), .bannerBottom)
+        XCTAssertEqual(Conversions.showStyle(Conversions.banner | Conversions.bannerTop), .bannerTop)
         XCTAssertEqual(Conversions.showStyle(Conversions.rewardedVideo), .rewardedVideo)
         XCTAssertNil(Conversions.showStyle(Conversions.mrec))
     }

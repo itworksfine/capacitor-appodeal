@@ -59,9 +59,10 @@ internal class BannerEvents(private val emit: Emit) : BannerCallbacks {
 
     override fun onBannerShown() = emit("onBannerShown", null)
 
-    // Not reported, as in react-native-appodeal: a banner that fails to show
-    // also fails to load, which is.
-    override fun onBannerShowFailed() = Unit
+    // react-native-appodeal drops this one; it is reported here because a
+    // page that asked for a banner and hears nothing has no other way to
+    // know. The iOS SDK has no counterpart, so it fires on Android only.
+    override fun onBannerShowFailed() = emit("onBannerFailedToShow", null)
 
     override fun onBannerClicked() = emit("onBannerClicked", null)
 
